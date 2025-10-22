@@ -13,6 +13,9 @@ from utils import parse
 from torchgpipe import GPipe
 import torch.distributed as dist
 
+from utils.nvfp4_utils import GetRecipes
+import transformer_engine.pytorch as te
+
 
 def load_model(args):
     if args.local_rank >= 0:
@@ -82,6 +85,10 @@ def train(args):
     acc_steps = 1
     acc_loss = 0
     
+    recipe_available, reason_for_no_recipe = te.is_nvfp4_available(return_reason=True)
+    nvfp4_recipe = GetRecipes.nvfp4_recipe(args.nvfp4_with_rht, args.nvfp4_with_2d_quantization)
+    print(f"NVFP4 available: {recipe_available}, reason: {reason_for_no_recipe}, nvfp4_recipe: {nvfp4_recipe}")
+
     for epoch in range(args.max_epochs):     
         for batch, (source, target, _) in enumerate(dataloader):
             
@@ -90,8 +97,8 @@ def train(args):
             if acc_steps == 1:
                 optimizer.zero_grad()
 
-            
-            logit = model(source)
+            with te.autocast(enabled=args.use_nvfp4, recipe=nvfp4_recipe):
+                logit = model(source)
             loss = loss_fn(logit.view(-1, args.vocab_size), target.view(-1)) / args.grad_acc
             acc_loss += loss.item()
         

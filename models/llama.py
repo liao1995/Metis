@@ -13,6 +13,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from Metis.bitlinear import *
 
+import transformer_engine.pytorch as te
+
+
 class RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6, device: str="cuda"):
         super().__init__()
@@ -67,10 +70,16 @@ class Attention(nn.Module):
     self.head_dim = args.dim // args.n_heads
     self.n_rep = args.n_heads // args.n_kv_heads
 
-    self.wq = BitLinear(self.dim, self.n_heads * self.head_dim, args=args, bias=False)
-    self.wk = BitLinear(self.dim, self.n_kv_heads * self.head_dim, args=args, bias=False)
-    self.wv = BitLinear(self.dim, self.n_kv_heads * self.head_dim, args=args, bias=False)
-    self.wo = BitLinear(self.n_heads * self.head_dim, self.dim, args=args, bias=False)
+    if args.use_nvfp4:
+        self.wq = te.Linear(self.dim, self.n_heads * self.head_dim, bias=False, device=args.device)
+        self.wk = te.Linear(self.dim, self.n_kv_heads * self.head_dim, bias=False, device=args.device)
+        self.wv = te.Linear(self.dim, self.n_kv_heads * self.head_dim, bias=False, device=args.device)
+        self.wo = te.Linear(self.n_heads * self.head_dim, self.dim, bias=False, device=args.device)
+    else:
+        self.wq = BitLinear(self.dim, self.n_heads * self.head_dim, args=args, bias=False)
+        self.wk = BitLinear(self.dim, self.n_kv_heads * self.head_dim, args=args, bias=False)
+        self.wv = BitLinear(self.dim, self.n_kv_heads * self.head_dim, args=args, bias=False)
+        self.wo = BitLinear(self.n_heads * self.head_dim, self.dim, args=args, bias=False)
 
   def forward(self, x: torch.Tensor, start_pos, inference):
     bsz, seq_len, _ = x.shape
@@ -159,9 +168,14 @@ class FeedForward(nn.Module):
         # self.w2 = nn.Linear(hidden_dim, self.dim, bias=False, device=args.device)
         # self.w3 = nn.Linear(self.dim, hidden_dim, bias=False, device=args.device)
         
-        self.w1 = BitLinear(self.dim, hidden_dim, bias=False, args=args)
-        self.w2 = BitLinear(hidden_dim, self.dim, bias=False, args=args)
-        self.w3 = BitLinear(self.dim, hidden_dim, bias=False, args=args)
+        if args.use_nvfp4:
+            self.w1 = te.Linear(self.dim, hidden_dim, bias=False, device=args.device)
+            self.w2 = te.Linear(hidden_dim, self.dim, bias=False, device=args.device)
+            self.w3 = te.Linear(self.dim, hidden_dim, bias=False, device=args.device)
+        else:
+            self.w1 = BitLinear(self.dim, hidden_dim, bias=False, args=args)
+            self.w2 = BitLinear(hidden_dim, self.dim, bias=False, args=args)
+            self.w3 = BitLinear(self.dim, hidden_dim, bias=False, args=args)
         
     def forward(self, x):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))

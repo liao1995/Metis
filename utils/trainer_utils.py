@@ -129,6 +129,10 @@ def parse():
     parser.add_argument("--model", type=str, default="gpt")
     
 
+    parser.add_argument("--use-nvfp4", action="store_true")
+    parser.add_argument("--nvfp4-with-rht", action="store_true")
+    parser.add_argument("--nvfp4-with-2d-quantization", action="store_true")
+
     parser.add_argument("--enable-lowbit", action="store_true")
 
 
