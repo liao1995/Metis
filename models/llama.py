@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 from Metis.bitlinear import *
 
 import transformer_engine.pytorch as te
+from utils.nvfp4_utils import GetRecipes
 
 
 class RMSNorm(nn.Module):
@@ -240,6 +241,10 @@ class TransformerSeq(nn.Sequential):
     super().__init__()
     self.params = args
     
+    recipe_available, reason_for_no_recipe = te.is_nvfp4_available(return_reason=True)
+    self.nvfp4_recipe = GetRecipes.nvfp4_recipe(args.nvfp4_with_rht, args.nvfp4_with_2d_quantization)
+    print(f"NVFP4 available: {recipe_available}, reason: {reason_for_no_recipe}, nvfp4_recipe: {self.nvfp4_recipe}")
+
     self.append(nn.Embedding(args.vocab_size, args.dim))
     for layer_id in range(args.n_layers):
       self.append(TransformerBlock(args=args))
@@ -248,3 +253,7 @@ class TransformerSeq(nn.Sequential):
     
     self.append(nn.Linear(args.dim, args.vocab_size, bias=False))
 
+  def forward(self, input):
+     with te.autocast(enabled=self.params.use_nvfp4, recipe=self.nvfp4_recipe):
+        return super().forward(input)
+     

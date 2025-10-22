@@ -1,2 +1,2 @@
 from .gpt import GPT
-from .llama import Transformer, TransformerSeq
+from .llama import Transformer, TransformerSeq, TransformerBlock

@@ -6,7 +6,7 @@ GRAD_ACC=1
 TAG=llama3-8b_nvfp4_with_2d_quantization
 PORT=12345
 
-python pp_main.py \
+torchrun --nproc_per_node=4 fsdp_main.py \
     --chkpt-dir checkpoints/ \
     --dataset-path ./dataset/DCLM-cleaned \
     --log-dir logs/ \
