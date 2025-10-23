@@ -3,7 +3,7 @@ LOCAL_BATCH_SIZE=12
 GRAD_ACC=1
 # total batchsize = LOCAL_BATCH_SIZE * GRAD_ACC * NPROC
 
-TAG=llama3-8b_nvfp4_with_2d_quantization
+TAG=llama3-8b_nvfp4_rht_with_2d_quantization
 PORT=12345
 
 torchrun --nproc_per_node=4 fsdp_main.py \
@@ -27,9 +27,8 @@ torchrun --nproc_per_node=4 fsdp_main.py \
     --grad-acc $GRAD_ACC \
     --lr-warmup-steps 20 \
     --use-nvfp4 \
-    --nvfp4-with-2d-quantization 
-
-# --nvfp4-with-rht
+    --nvfp4-with-2d-quantization \
+    --nvfp4-with-rht
 
 
 

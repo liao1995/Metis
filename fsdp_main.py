@@ -11,10 +11,15 @@ from torch.utils.tensorboard import SummaryWriter
 from utils import parse
 from functools import partial
 
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    checkpoint_wrapper,
+    CheckpointImpl,
+    apply_activation_checkpointing
+)
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy, transformer_auto_wrap_policy
 from torch.distributed.fsdp.api import ShardingStrategy, CPUOffload
-from torch.distributed.fsdp import MixedPrecision
+from torch.distributed.fsdp import MixedPrecision, BackwardPrefetch
 from torch.utils.data.distributed import DistributedSampler
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType, FullStateDictConfig
 
@@ -40,7 +45,7 @@ def cleanup():
 
 def get_model(args):
     model = TransformerSeq(args)
-    model = model.to(args.device)
+    model = model.to(args.device).bfloat16()
 
     if args.rank == 0:
         params = sum(p.numel() for p in model.parameters())
@@ -65,14 +70,23 @@ def get_model(args):
 
     model = FSDP(
         model,
-        auto_wrap_policy=auto_wrap_policy,
+        auto_wrap_policy=transformer_wrap_policy,
         sharding_strategy=ShardingStrategy.FULL_SHARD,
         device_id=args.local_rank,
-        cpu_offload=CPUOffload(offload_params=True),
+        cpu_offload=CPUOffload(offload_params=False),
         # mixed_precision=bf16_policy,
         use_orig_params=True,
+        backward_prefetch=BackwardPrefetch.BACKWARD_PRE
     )
-    
+
+    # transformer_layer_cls = ( TransformerBlock )
+    # check_fn = lambda m: isinstance(m, transformer_layer_cls)
+    # apply_activation_checkpointing(
+    #     model, 
+    #     checkpoint_wrapper_fn=partial(checkpoint_wrapper, checkpoint_impl=CheckpointImpl.REENTRANT), 
+    #     check_fn=check_fn
+    # )
+
     if args.rank == 0:
         params = sum(p.numel() for p in model.parameters())
         print(f'After FSDP wrapping, each rank has {params/1e6:.2f}M params')
