@@ -242,7 +242,10 @@ class TransformerSeq(nn.Sequential):
     self.params = args
     
     recipe_available, reason_for_no_recipe = te.is_nvfp4_available(return_reason=True)
-    self.nvfp4_recipe = GetRecipes.nvfp4_recipe(args.nvfp4_with_rht, args.nvfp4_with_2d_quantization)
+    self.nvfp4_recipe = GetRecipes.nvfp4_recipe(
+       args.nvfp4_with_rht,
+       args.nvfp4_with_2d_quantization,
+       args.nvfp4_with_sr)
     print(f"NVFP4 available: {recipe_available}, reason: {reason_for_no_recipe}, nvfp4_recipe: {self.nvfp4_recipe}")
 
     self.append(nn.Embedding(args.vocab_size, args.dim))

@@ -42,9 +42,57 @@ class GetRecipes:
         return nvfp4_recipe
 
     @staticmethod
-    def nvfp4_recipe(with_rht: bool = False, with_2d_quantization: bool = False):
-        if with_rht and with_2d_quantization:
+    def nvfp4_sr_and_2d_quantization():
+        nvfp4_recipe = recipe.NVFP4BlockScaling()
+        nvfp4_recipe.fp4_quant_fwd_inp = recipe.QParams(
+            stochastic_rounding=True, fp4_2d_quantization=False
+        )
+        nvfp4_recipe.fp4_quant_fwd_weight = recipe.QParams(
+            stochastic_rounding=True, fp4_2d_quantization=True
+        )
+        nvfp4_recipe.fp4_quant_bwd_grad = recipe.QParams(
+            stochastic_rounding=True, fp4_2d_quantization=False
+        )
+        return nvfp4_recipe
+
+    @staticmethod
+    def nvfp4_sr_and_rht():
+        nvfp4_recipe = recipe.NVFP4BlockScaling()
+        nvfp4_recipe.fp4_quant_fwd_inp = recipe.QParams(
+            random_hadamard_transform=True, stochastic_rounding=True
+        )
+        nvfp4_recipe.fp4_quant_fwd_weight = recipe.QParams(
+            random_hadamard_transform=False, stochastic_rounding=True
+        )
+        nvfp4_recipe.fp4_quant_bwd_grad = recipe.QParams(
+            random_hadamard_transform=True, stochastic_rounding=True
+        )
+        return nvfp4_recipe
+
+    @staticmethod
+    def nvfp4_rht_and_sr_and_2d_quantization():
+        nvfp4_recipe = recipe.NVFP4BlockScaling()
+        nvfp4_recipe.fp4_quant_fwd_inp = recipe.QParams(
+            random_hadamard_transform=True, stochastic_rounding=True, fp4_2d_quantization=False
+        )
+        nvfp4_recipe.fp4_quant_fwd_weight = recipe.QParams(
+            random_hadamard_transform=False, stochastic_rounding=True, fp4_2d_quantization=True
+        )
+        nvfp4_recipe.fp4_quant_bwd_grad = recipe.QParams(
+            random_hadamard_transform=True, stochastic_rounding=True, fp4_2d_quantization=False
+        )
+        return nvfp4_recipe
+
+    @staticmethod
+    def nvfp4_recipe(with_rht: bool = False, with_2d_quantization: bool = False, with_sr: bool = False):
+        if with_rht and with_sr and with_2d_quantization:
+            return GetRecipes.nvfp4_rht_and_sr_and_2d_quantization()
+        elif with_rht and with_2d_quantization:
             return GetRecipes.nvfp4_rht_and_2d_quantization()
+        elif with_sr and with_2d_quantization:
+            return GetRecipes.nvfp4_sr_and_2d_quantization()
+        elif with_rht and with_sr:
+            return GetRecipes.nvfp4_sr_and_rht()
         elif with_rht:
             return GetRecipes.nvfp4_rht_only()
         elif with_2d_quantization:
